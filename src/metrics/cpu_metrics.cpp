@@ -2,6 +2,28 @@
 
 #include <mach/mach.h>
 #include <mach/processor_info.h>
+#include <sys/sysctl.h>
+
+// Builds per-core labels. On Apple Silicon, perflevel0 = P-cores (come first
+// in host_processor_info), perflevel1 = E-cores. Falls back to "Core N".
+static std::vector<std::string> build_labels(natural_t cpu_count) {
+    int p_count = 0, e_count = 0;
+    size_t sz = sizeof(int);
+    bool ok = sysctlbyname("hw.perflevel0.logicalcpu", &p_count, &sz, nullptr, 0) == 0
+           && sysctlbyname("hw.perflevel1.logicalcpu", &e_count, &sz, nullptr, 0) == 0;
+
+    std::vector<std::string> labels(cpu_count);
+    if (ok && static_cast<natural_t>(p_count + e_count) == cpu_count) {
+        for (int i = 0; i < p_count; ++i)
+            labels[i] = "P" + std::to_string(i + 1);
+        for (int i = 0; i < e_count; ++i)
+            labels[p_count + i] = "E" + std::to_string(i + 1);
+    } else {
+        for (natural_t i = 0; i < cpu_count; ++i)
+            labels[i] = "Core " + std::to_string(i);
+    }
+    return labels;
+}
 
 CpuMetrics::CpuMetrics() {
     // Prime prev_ticks_ so the first real sample() returns a valid delta.
@@ -59,6 +81,9 @@ CPUUsage CpuMetrics::sample() {
             result.overall = 100.0 * total_used / total_all;
         }
     }
+
+    if (labels_.empty())
+        labels_ = build_labels(cpu_count);
 
     prev_ticks_ = std::move(curr);
     return result;

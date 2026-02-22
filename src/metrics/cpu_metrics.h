@@ -20,7 +20,10 @@ public:
     CpuMetrics();
     // Returns CPU usage since the last call (delta-based).
     CPUUsage sample();
+    // Labels like "P1", "P2", "E1", "E2" on Apple Silicon; "Core 0" etc. on Intel.
+    const std::vector<std::string>& core_labels() const { return labels_; }
 
 private:
     std::vector<CoreTicks> prev_ticks_;
+    std::vector<std::string> labels_;
 };
