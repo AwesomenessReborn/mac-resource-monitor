@@ -14,10 +14,11 @@ static std::vector<std::string> build_labels(natural_t cpu_count) {
 
     std::vector<std::string> labels(cpu_count);
     if (ok && static_cast<natural_t>(p_count + e_count) == cpu_count) {
-        for (int i = 0; i < p_count; ++i)
-            labels[i] = "P" + std::to_string(i + 1);
+        // host_processor_info enumerates E-cores first on Apple Silicon.
         for (int i = 0; i < e_count; ++i)
-            labels[p_count + i] = "E" + std::to_string(i + 1);
+            labels[i] = "E" + std::to_string(i + 1);
+        for (int i = 0; i < p_count; ++i)
+            labels[e_count + i] = "P" + std::to_string(i + 1);
     } else {
         for (natural_t i = 0; i < cpu_count; ++i)
             labels[i] = "Core " + std::to_string(i);
